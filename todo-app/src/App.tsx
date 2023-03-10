@@ -1,6 +1,8 @@
 import React, { FC, useEffect, useState } from 'react';
 import './App.css';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
+import { print } from 'graphql';
+import gql from 'graphql-tag';
 
 const App: FC = () => {
 	interface List{
@@ -46,9 +48,6 @@ const App: FC = () => {
 	// eslint-disable-next-line @typescript-eslint/typedef
 	const add = (item: string, isEdit: string) => {
 		event?.preventDefault
-		const config: AxiosRequestConfig = {
-			headers: { Authorization: `Bearer ${token}` }
-		};
 		let itemId: string = (todoList.length + 1).toString();
 		if(isEdit){
 			itemId = isEdit;
@@ -56,11 +55,27 @@ const App: FC = () => {
 				name: item,
 				id: itemId,
 			}
-			axios.put(backend_url, newTodo, config)
+					// eslint-disable-next-line @typescript-eslint/typedef
+			const TODO = gql`
+			mutation updateTodo($id:String!, $name:String!) {
+			updateTodo(id:$id, name:$name) { 
+				id
+				name
+			}
+			}
+			`;
+			axios.post(backend_url, 
+				{
+					query: print(TODO),
+					variables: {
+						id: newTodo.id,
+						name: newTodo.name,
+					},
+					headers: { Authorization: `Bearer ${token}` }
+				})
 			.then(response => {
-				console.log(response)
-				// eslint-disable-next-line no-debugger
-				setTodoList(response.data)
+				console.log(response.data)
+				//setTodoList(response.data)
 			})
 		}else{
 			const newTodo: List = {
@@ -69,22 +84,28 @@ const App: FC = () => {
 			}
 			console.log(newTodo)
 			console.log(token)
-			fetch(backend_url, {
-				method: 'POST',
-				headers: {'Content-Type': 'application/json'},
-				body: JSON.stringify({
-					mutation: `{
-						createTodo(id: ${newTodo.id}, name: ${newTodo.name}){
-							id
-							name
-					}`
-				}),
+
+			// eslint-disable-next-line @typescript-eslint/typedef
+			const TODO = gql`
+			mutation createTodo($id:String!, $name:String!) {
+			  createTodo(id:$id, name:$name) { 
+				id
+				name
+			  }
+			}
+			`;
+			
+			axios.post(backend_url, {
+				query: print(TODO),
+				variables: {
+					id: newTodo.id,
+					name: newTodo.name,
+				},
+				headers: { Authorization: `Bearer ${token}` }
 			})
-			.then(res => res.json())
-			.then(res => {
-				console.log(res.data)
+			.then(res => console.log(res))
+			.catch(err => console.log(err))
 				//setTodoList(res.data.getAllTodos)
-			});
 		}
 
 		setEditItem('');
@@ -94,15 +115,26 @@ const App: FC = () => {
 		setEditItem(item.id)
 	}
 	async function remove(item: List) {
-		try {
-			await axios.delete(backend_url, { headers: { Authorization: `Bearer ${token}` }, data: item })
-				.then(response => {
-					console.log('remove response:', response);
-					setTodoList(response.data.data);
-				});
-		} catch (error) {
-			console.log(error);
-		}
+		// eslint-disable-next-line @typescript-eslint/typedef
+		const TODO = gql`
+			mutation deleteTodo($id:String!) {
+				deleteTodo(id:$id) { 
+					id
+				}
+			}
+		`;
+		axios.post(backend_url, 
+			{
+				query: print(TODO),
+				variables: {
+					id: item.id
+				},
+				headers: { Authorization: `Bearer ${token}` }
+			})
+		.then(response => {
+			console.log(response.data)
+			//setTodoList(response.data)
+		})
 	}
 	function logging(user: User | null){
 		if(!user){
@@ -128,12 +160,10 @@ const App: FC = () => {
 			</section>
 			<section>
 				{ /*user?.role === 'admin' && */
-					//<form>
-					<>
+					<form>
 						<input value={todo} onChange={(event) => setTodo(event.target.value)} />
 						<button id='add' onClick={() => add(todo, editItem)}>{!editItem ? 'Add' : 'Update'}</button>
-						</>
-					//</form>
+					</form>
 				}		
 			</section>
 			<section>

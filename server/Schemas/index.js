@@ -1,6 +1,8 @@
 
 const fs = require("fs");
 const graphql = require('graphql');
+const authenticateToken = require('../server')
+
 const { 
     GraphQLObjectType, 
     GraphQLSchema, 
@@ -32,8 +34,8 @@ const RootQuery = new GraphQLObjectType({
           id: { type: GraphQLString },
           name: { type: GraphQLString },
         },
-        resolve(parent, args){
-            console.log('CREATE')
+        resolve(parent, args, req){
+            console.log('CREATE', req.headers.authorization)
             todoData.push({ id: args.id, name: args.name });
             const data = JSON.stringify(todoData)
             fs.writeFile('./list.json', data, err => {
